@@ -15,7 +15,7 @@ parser.add_argument("hostname", help="the hostname", type=str)
 parser.add_argument("username", help="the snmp user name", type=str)
 parser.add_argument("authkey", help="the auth key", type=str)
 parser.add_argument("privkey", help="the priv key", type=str)
-parser.add_argument("mode", help="the mode", type=str, choices=["load", "memory", "disk", "storage", "update", "status"])
+parser.add_argument("mode", help="the mode", type=str, choices=["load", "memory", "disk", "storage", "update", "status", "raid"])
 parser.add_argument("-w", help="warning value for selected mode", type=int)
 parser.add_argument("-c", help="critical value for selected mode", type=int)
 parser.add_argument("-p", help="the snmp port", type=int, dest="port", default=161)
@@ -301,4 +301,37 @@ if mode == 'status':
 
     # 3. Respond with textual and perfdata output and propagate exit code.
     print(state + ' - Model: %s, S/N: %s, System Temperature: %s C, System Status: %s, System Fan: %s, CPU Fan: %s, Powersupply : %s' % (status_model, status_serial, status_temperature, status_system, status_system_fan, status_cpu_fan, status_power) + ' | system_temp=%sc' % status_temperature)
+    exitCode()
+
+if mode == 'raid':
+    output = ''
+    perfdata = '|'
+    # Synology raid status values (from synology MIB).
+    #   1  = Normal — the raid functions normally.
+    #   2  = Repairing
+    #   3  = Migrating
+    #   4  = Expanding
+    #   5  = Deleting
+    #   6  = Creating
+    #   7  = RaidSyncing
+    #   8  = RaidParityChecking
+    #   9  = RaidAssembling
+    #   10 = Canceling
+    #   11 = Degrade — a tolerable disk failure has occurred (still actionable).
+    #   12 = Crashed — raid is in read-only state.
+    WARNING_STATUSES = {"2", "3", "4", "5", "6", "7", "8", "9", "10"}
+    CRITICAL_STATUSES = {"11", "12"}  # 11 = Degrade, 12 = Crashed
+    for item in snmpwalk('1.3.6.1.4.1.6574.3.1.1.1'):
+        i = item.oid_index or item.oid.split('.')[-1]
+        storage_name = snmpget('1.3.6.1.4.1.6574.3.1.1.2.' + str(i))
+        raid_status = str(snmpget('1.3.6.1.4.1.6574.3.1.1.3.' + str(i)))
+        if raid_status in CRITICAL_STATUSES:
+            state = "CRITICAL"
+        elif raid_status in WARNING_STATUSES and state != "CRITICAL":
+            state = "WARNING"
+        elif raid_status != "1" and state == "OK":
+            state = "UNKNOWN"
+        output += ' - raid status: [' + storage_name + '] status=' + raid_status
+        perfdata += ' "' + storage_name + '"=' + raid_status
+    print('%s%s %s' % (state, output, perfdata))
     exitCode()

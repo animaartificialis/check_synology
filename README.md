@@ -52,6 +52,7 @@ Custom timeouts (`-t`) and retries (`-r`) can be specified by using `-t` and `-r
 | storage | Detects and checks all disks (free, total, %)                              | if more used than w/c in %                                                                                                                                                                                                                                                        |
 | update  | Shows the current DSM version and if DSM update is available               | if update is "Unavailable", will trigger OK <br> if update is "Available", will trigger WARNING <br> otherwise: UNKNOWN                                                                                                                                                           |
 | status  | Shows model, s/n, temp and status of system, fan, cpu fan and power supply | if temp higher than w/c in °C                                                                                                                                                                                                                                                     |
+| raid    | Shows raid volume status for every storage pool                            | WARNING for intermediate states (Repairing/Migrating/Expanding/Deleting/Creating/RaidSyncing/RaidParityChecking/RaidAssembling/Canceling); CRITICAL for Degrade and Crashed; OK for Normal                                                                                          |
 
 
 
