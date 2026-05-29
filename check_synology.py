@@ -16,8 +16,10 @@ parser.add_argument("username", help="the snmp user name", type=str)
 parser.add_argument("authkey", help="the auth key", type=str)
 parser.add_argument("privkey", help="the priv key", type=str)
 parser.add_argument("mode", help="the mode", type=str, choices=["load", "memory", "disk", "storage", "update", "status", "raid"])
-parser.add_argument("-w", help="warning value for selected mode", type=int)
-parser.add_argument("-c", help="critical value for selected mode", type=int)
+parser.add_argument("-w", help="warning value for selected mode (storage mode: PERC_USED, warn if used > N)", type=int)
+parser.add_argument("-c", help="critical value for selected mode (storage mode: PERC_USED, crit if used > N)", type=int)
+parser.add_argument("--warning-free", help="storage mode only: PERC_FREE, warn if free < N (matches check_disk -w convention; takes precedence over -w if both set)", type=str, default=None, dest="warning_free")
+parser.add_argument("--critical-free", help="storage mode only: PERC_FREE, crit if free < N (matches check_disk -c convention; takes precedence over -c if both set)", type=str, default=None, dest="critical_free")
 parser.add_argument("-p", help="the snmp port", type=int, dest="port", default=161)
 parser.add_argument("-e", help="SNMP privacy protocol encryption", type=str, default="AES128", choices=["AES128", "DES"])
 parser.add_argument("-t", help="timeout for snmp connection", type=int, default=10)
@@ -32,6 +34,17 @@ priv_key = args.privkey
 mode = args.mode
 warning = args.w
 critical = args.c
+
+def _parse_pct(s):
+    """Strip optional '%' and whitespace, convert to int. None → None."""
+    if s is None:
+        return None
+    return int(str(s).strip().rstrip('%').strip())
+
+warning_free = _parse_pct(args.warning_free)
+critical_free = _parse_pct(args.critical_free)
+if (warning_free is not None and warning is not None) or (critical_free is not None and critical is not None):
+    print("check_synology: both -w/-c and --warning-free/--critical-free given; using free thresholds", file=sys.stderr)
 priv_protocol = args.e
 snmp_timeout = args.t
 snmp_retries = args.r
@@ -225,15 +238,25 @@ if mode == 'storage':
                 continue
 
             storage_used_percent = int(storage_used * 100 / storage_size)
+            storage_free_percent = 100 - storage_used_percent
 
-            if warning and warning < int(storage_used_percent):
+            # Free-percent (PERC_FREE) wins; falls back to upstream -w/-c PERC_USED.
+            if warning_free is not None:
+                if storage_free_percent < warning_free and state != 'CRITICAL':
+                    state = 'WARNING'
+            elif warning and warning < storage_used_percent:
                 if state != 'CRITICAL':
                     state = 'WARNING'
-            if critical and critical < int(storage_used_percent):
+
+            if critical_free is not None:
+                if storage_free_percent < critical_free:
+                    state = 'CRITICAL'
+            elif critical and critical < storage_used_percent:
                 state = 'CRITICAL'
 
             output += ' -  free space: ' + storage_name + ' ' + str(storage_free) + ' GB (' + str(storage_used) + ' GB of ' + str(storage_size) + ' GB used, ' + str(storage_used_percent) + '%)'
-            perfdata += storage_name + '=' + str(storage_used) + 'c '
+            # Perfdata format: value;warn;crit;min;max — max=storage_size enables disk_forecast (.max series in Graphite).
+            perfdata += storage_name + '=' + str(storage_used) + 'c;;;0;' + str(storage_size) + ' '
     print('%s%s %s' % (state, output, perfdata))
     exitCode()
 
