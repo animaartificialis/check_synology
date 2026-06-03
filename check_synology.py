@@ -344,6 +344,12 @@ if mode == 'raid':
     #   12 = Crashed — raid is in read-only state.
     WARNING_STATUSES = {"2", "3", "4", "5", "6", "7", "8", "9", "10"}
     CRITICAL_STATUSES = {"11", "12"}  # 11 = Degrade, 12 = Crashed
+    RAID_STATUS_NAMES = {
+        "1": "Normal", "2": "Repairing", "3": "Migrating", "4": "Expanding",
+        "5": "Deleting", "6": "Creating", "7": "RaidSyncing",
+        "8": "RaidParityChecking", "9": "RaidAssembling", "10": "Canceling",
+        "11": "Degrade", "12": "Crashed",
+    }
     for item in snmpwalk('1.3.6.1.4.1.6574.3.1.1.1'):
         i = item.oid_index or item.oid.split('.')[-1]
         storage_name = snmpget('1.3.6.1.4.1.6574.3.1.1.2.' + str(i))
@@ -354,7 +360,8 @@ if mode == 'raid':
             state = "WARNING"
         elif raid_status != "1" and state == "OK":
             state = "UNKNOWN"
-        output += ' - raid status: [' + storage_name + '] status=' + raid_status
+        status_name = RAID_STATUS_NAMES.get(raid_status, "Unknown")
+        output += ' - raid status: [' + storage_name + '] status=' + raid_status + ' (' + status_name + ')'
         perfdata += ' "' + storage_name + '"=' + raid_status
     print('%s%s %s' % (state, output, perfdata))
     exitCode()
