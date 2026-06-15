@@ -39,7 +39,10 @@ def _parse_pct(s):
     """Strip optional '%' and whitespace, convert to int. None → None."""
     if s is None:
         return None
-    return int(str(s).strip().rstrip('%').strip())
+    try:
+        return int(str(s).strip().rstrip('%').strip())
+    except ValueError:
+        parser.error(f"invalid percent value: {s!r} (expected e.g. 15 or 15%)")
 
 warning_free = _parse_pct(args.warning_free)
 critical_free = _parse_pct(args.critical_free)
@@ -238,20 +241,19 @@ if mode == 'storage':
                 continue
 
             storage_used_percent = int(storage_used * 100 / storage_size)
-            storage_free_percent = 100 - storage_used_percent
-
+            storage_free_percent = int(storage_free * 100 / storage_size)
             # Free-percent (PERC_FREE) wins; falls back to upstream -w/-c PERC_USED.
             if warning_free is not None:
                 if storage_free_percent < warning_free and state != 'CRITICAL':
                     state = 'WARNING'
-            elif warning and warning < storage_used_percent:
+            elif warning is not None and warning < storage_used_percent:
                 if state != 'CRITICAL':
                     state = 'WARNING'
 
             if critical_free is not None:
                 if storage_free_percent < critical_free:
                     state = 'CRITICAL'
-            elif critical and critical < storage_used_percent:
+            elif critical is not None and critical < storage_used_percent:
                 state = 'CRITICAL'
 
             output += ' -  free space: ' + storage_name + ' ' + str(storage_free) + ' GB (' + str(storage_used) + ' GB of ' + str(storage_size) + ' GB used, ' + str(storage_used_percent) + '%)'
