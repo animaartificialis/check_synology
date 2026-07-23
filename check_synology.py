@@ -344,13 +344,27 @@ if mode == 'raid':
     #   10 = Canceling
     #   11 = Degrade — a tolerable disk failure has occurred (still actionable).
     #   12 = Crashed — raid is in read-only state.
-    WARNING_STATUSES = {"2", "3", "4", "5", "6", "7", "8", "9", "10"}
+    #   13 = DataScrubbing
+    #   14 = RaidDeploying
+    #   15 = RaidUnDeploying
+    #   16 = RaidMountCache
+    #   17 = RaidUnmountCache
+    #   18 = RaidExpandingUnfinishedSHR
+    #   19 = RaidConvertSHRToPool
+    #   20 = RaidMigrateSHR1ToSHR2
+    #   21 = RaidUnknownStatus
+    WARNING_STATUSES = {"2", "3", "4", "5", "6", "7", "8", "9", "10",
+                        "13", "14", "15", "16", "17", "18", "19", "20"}
     CRITICAL_STATUSES = {"11", "12"}  # 11 = Degrade, 12 = Crashed
     RAID_STATUS_NAMES = {
         "1": "Normal", "2": "Repairing", "3": "Migrating", "4": "Expanding",
         "5": "Deleting", "6": "Creating", "7": "RaidSyncing",
         "8": "RaidParityChecking", "9": "RaidAssembling", "10": "Canceling",
-        "11": "Degrade", "12": "Crashed",
+        "11": "Degrade", "12": "Crashed", "13": "DataScrubbing",
+        "14": "RaidDeploying", "15": "RaidUnDeploying", "16": "RaidMountCache",
+        "17": "RaidUnmountCache", "18": "RaidExpandingUnfinishedSHR",
+        "19": "RaidConvertSHRToPool", "20": "RaidMigrateSHR1ToSHR2",
+        "21": "RaidUnknownStatus",
     }
     for item in snmpwalk('1.3.6.1.4.1.6574.3.1.1.1'):
         i = item.oid_index or item.oid.split('.')[-1]
